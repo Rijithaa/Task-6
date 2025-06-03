@@ -1,0 +1,115 @@
+# Importing the necessary
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
+from matplotlib.colors import ListedColormap
+
+
+# Load the iris dataset
+iris = load_iris()
+X = iris.data
+y = iris.target
+feature_names = iris.feature_names
+target_names = iris.target_names
+
+# Split into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Normalize features (important for KNN)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+# Create KNN model with k=3
+knn = KNeighborsClassifier(n_neighbors=3)
+knn.fit(X_train_scaled, y_train)
+
+Output:
+KNeighborsClassifier
+KNeighborsClassifier(n_neighbors=3)
+
+# Try different values of K and record accuracy
+k_values = range(1, 21)
+accuracies = []
+
+for k in k_values:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train_scaled, y_train)
+    y_pred = knn.predict(X_test_scaled)
+    acc = accuracy_score(y_test, y_pred)
+    accuracies.append(acc)
+
+# Plotting K vs Accuracy
+plt.plot(k_values, accuracies, marker='o')
+plt.title('K vs Accuracy')
+plt.xlabel('K (Number of Neighbors)')
+plt.ylabel('Accuracy')
+plt.grid(True)
+plt.show()
+
+# Best K (e.g., from graph or test accuracy)
+best_k = k_values[np.argmax(accuracies)]
+print(f"Best K: {best_k} with Accuracy: {max(accuracies):.2f}")
+
+# Final model with best K
+knn = KNeighborsClassifier(n_neighbors=best_k)
+knn.fit(X_train_scaled, y_train)
+y_pred = knn.predict(X_test_scaled)
+
+# Accuracy
+print("Accuracy:", accuracy_score(y_test, y_pred))
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=target_names)
+disp.plot(cmap=plt.cm.Blues)
+plt.title("Confusion Matrix")
+plt.show()
+
+
+# Use only 2 features for visualization
+X_vis = X[:, [2, 3]]
+y_vis = y
+X_train_v, X_test_v, y_train_v, y_test_v = train_test_split(X_vis, y_vis, test_size=0.3, random_state=42)
+
+# Normalize
+scaler_v = StandardScaler()
+X_train_v_scaled = scaler_v.fit_transform(X_train_v)
+X_test_v_scaled = scaler_v.transform(X_test_v)
+
+# Train model
+knn_v = KNeighborsClassifier(n_neighbors=best_k)
+knn_v.fit(X_train_v_scaled, y_train_v)
+
+# Plot decision boundary
+h = .02  # step size
+x_min, x_max = X_train_v_scaled[:, 0].min() - 1, X_train_v_scaled[:, 0].max() + 1
+y_min, y_max = X_train_v_scaled[:, 1].min() - 1, X_train_v_scaled[:, 1].max() + 1
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+
+Z = knn_v.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+# Plot
+plt.figure(figsize=(8, 6))
+cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+cmap_bold = ['red', 'green', 'blue']
+
+plt.contourf(xx, yy, Z, cmap=cmap_light)
+for i, color in zip(range(3), cmap_bold):
+    plt.scatter(X_train_v_scaled[y_train_v == i, 0], X_train_v_scaled[y_train_v == i, 1],
+                c=color, label=iris.target_names[i], edgecolor='k', s=50)
+
+plt.xlabel('Petal length (normalized)')
+plt.ylabel('Petal width (normalized)')
+plt.title(f"KNN Decision Boundary (k={best_k})")
+plt.legend()
+plt.show()
